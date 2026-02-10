@@ -2,6 +2,7 @@
 .cursor
 .vscode
 .idea
+.claude
 
-# Workspace
-work
+# Environment
+compose/.env
