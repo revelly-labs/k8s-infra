@@ -13,8 +13,9 @@ helm/ghost/
 └── overlays/
     └── pi/
         ├── kustomization.yaml      # Pi overlay
-        ├── patch-deployment.yaml   # URL, 리소스 하향
-        └── patch-pvc.yaml          # storageClass: local-path
+        ├── patch-deployment.yaml   # URL(revelly.io), 리소스 설정
+        ├── patch-pvc.yaml          # storageClass: local-path
+        └── patch-service.yaml      # NodePort 30080
 ```
 
 ## 배포
@@ -29,8 +30,6 @@ kustomize build helm/ghost/overlays/pi/
 
 ## 접속
 
-```bash
-kubectl --context pi port-forward svc/ghost -n ghost 2368:2368
-# http://localhost:2368
-# Admin: http://localhost:2368/ghost
-```
+- 외부: https://revelly.io (Cloudflare Tunnel → NodePort 30080)
+- 로컬: http://192.168.0.5:30080
+- Admin: https://revelly.io/ghost
