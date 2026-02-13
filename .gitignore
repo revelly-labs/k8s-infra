@@ -9,3 +9,5 @@ compose/.env
 
 # Secrets
 **/values-secret.yaml
+**/secrets.yaml
+**/secret.yaml

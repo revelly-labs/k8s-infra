@@ -1,0 +1,58 @@
+executor: KubernetesExecutor
+
+# Disable built-in PostgreSQL (use external)
+postgresql:
+  enabled: false
+
+# Disable Redis (not needed for KubernetesExecutor)
+redis:
+  enabled: false
+
+# API Server (Airflow 3.x Web UI)
+apiServer:
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+# Scheduler
+scheduler:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# DAGs from JuiceFS PVC
+dags:
+  persistence:
+    enabled: true
+    existingClaim: airflow-dags
+
+# Logs
+logs:
+  persistence:
+    enabled: true
+    storageClassName: juicefs-retain
+    size: 5Gi
+
+# Disable example DAGs
+extraEnv: |
+  - name: AIRFLOW__CORE__LOAD_EXAMPLES
+    value: "False"
+
+# Ingress
+ingress:
+  apiServer:
+    enabled: true
+    hosts:
+      - name: airflow.revelly.io
+        tls:
+          enabled: false
