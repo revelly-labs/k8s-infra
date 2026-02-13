@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: juicefs-gateway
+  labels:
+    app: juicefs-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: juicefs-gateway
+  template:
+    metadata:
+      labels:
+        app: juicefs-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: juicedata/mount:ce-v1.2.1
+          command:
+            - sh
+            - -c
+            - juicefs gateway $METAURL 0.0.0.0:9000
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: juicefs-gateway-secret
+                  key: GATEWAY_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: juicefs-gateway-secret
+                  key: GATEWAY_PASSWORD
+          envFrom:
+            - secretRef:
+                name: juicefs-gateway-secret
+          ports:
+            - containerPort: 9000
+              name: s3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: juicefs-gateway
+  labels:
+    app: juicefs-gateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+      name: s3
+  selector:
+    app: juicefs-gateway

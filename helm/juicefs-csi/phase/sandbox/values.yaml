@@ -1,0 +1,16 @@
+storageClasses:
+  - name: juicefs
+    enabled: true
+    reclaimPolicy: Delete
+    backend:
+      name: juicefs-sandbox
+      storage: s3
+      bucket: http://minio.sandbox.svc.cluster.local:9000/juicefs
+  - name: juicefs-retain
+    enabled: true
+    reclaimPolicy: Retain
+    pathPattern: "${.PVC.namespace}/${.PVC.name}"
+    backend:
+      name: juicefs-sandbox
+      storage: s3
+      bucket: http://minio.sandbox.svc.cluster.local:9000/juicefs

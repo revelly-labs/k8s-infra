@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/type
+        value: LoadBalancer
+      - op: replace
+        path: /spec/ports
+        value:
+          - port: 9002
+            targetPort: 9000
+            name: s3
+    target:
+      kind: Service
+      name: juicefs-gateway

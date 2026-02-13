@@ -1,0 +1,15 @@
+storageClasses:
+  - name: juicefs
+    enabled: true
+    reclaimPolicy: Delete
+    backend:
+      name: juicefs-local
+      storage: s3
+      bucket: http://minio.data-platform.svc.cluster.local:9000/juicefs
+  - name: juicefs-retain
+    enabled: true
+    reclaimPolicy: Retain
+    backend:
+      name: juicefs-local
+      storage: s3
+      bucket: http://minio.data-platform.svc.cluster.local:9000/juicefs
