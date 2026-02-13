@@ -1,0 +1,43 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+spec:
+  instances: 1
+
+  enableSuperuserAccess: true
+
+  bootstrap:
+    initdb:
+      database: sandbox
+      owner: sandbox
+      secret:
+        name: postgres-app-credentials
+
+  superuserSecret:
+    name: postgres-superuser
+
+  storage:
+    storageClass: local-path
+    size: 10Gi
+
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: postgres-nodeport
+            spec:
+              type: NodePort
+              ports:
+                - port: 5432
+                  nodePort: 30432
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
