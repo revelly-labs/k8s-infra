@@ -1,0 +1,251 @@
+# =============================================================
+# kube-prometheus-stack - Sandbox (sandbox001)
+# =============================================================
+# Prometheus + Grafana + Node Exporter + kube-state-metrics
+# 홈서버 단일 노드 환경에 맞춘 경량 설정
+# =============================================================
+
+# ----- Grafana -----
+grafana:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.revelly.io
+    path: /
+    pathType: Prefix
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi
+
+  initChownData:
+    enabled: false
+
+  # 기본 대시보드 (Kubernetes 클러스터 모니터링)
+  defaultDashboardsEnabled: true
+
+  sidecar:
+    dashboards:
+      enabled: true
+      # ConfigMap 라벨 기반 폴더 분류
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+
+  # ----- 추가 대시보드 (플랫폼별 폴더) -----
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: airflow
+          orgId: 1
+          folder: Airflow
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/airflow
+        - name: cloudnative-pg
+          orgId: 1
+          folder: CloudNativePG
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/cloudnative-pg
+        - name: minio
+          orgId: 1
+          folder: MinIO
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/minio
+        - name: node
+          orgId: 1
+          folder: Node
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/node
+
+  dashboards:
+    airflow:
+      airflow-cluster:
+        gnetId: 20994
+        revision: 1
+        datasource:
+          - name: DS_PROMETHEUS
+            value: Prometheus
+      airflow-dag:
+        gnetId: 20789
+        revision: 1
+        datasource:
+          - name: DS_PROMETHEUS
+            value: Prometheus
+          - name: DS_METRICS
+            value: Prometheus
+    cloudnative-pg:
+      cloudnative-pg:
+        gnetId: 20417
+        revision: 3
+        datasource: Prometheus
+    minio:
+      minio-overview:
+        gnetId: 13502
+        revision: 2
+        datasource: Prometheus
+    node:
+      node-exporter-full:
+        gnetId: 1860
+        revision: 37
+        datasource:
+          - name: DS_PROMETHEUS
+            value: Prometheus
+
+# 기본 대시보드를 "Kubernetes" 폴더로 분류
+grafanaDefaultDashboardsFolder: Kubernetes
+
+# ----- Prometheus -----
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - prometheus.revelly.io
+    paths:
+      - /
+    pathType: Prefix
+
+  prometheusSpec:
+    retention: 15d
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+    # sandbox 네임스페이스 외의 ServiceMonitor/PodMonitor도 수집
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+  # ----- 추가 ServiceMonitor: 기존 플랫폼 모니터링 -----
+  additionalServiceMonitors:
+    # MinIO 메트릭 (API 서비스만 선택, Console 서비스 제외)
+    - name: minio
+      selector:
+        matchLabels:
+          app: minio
+          monitoring: "true"
+      namespaceSelector:
+        matchNames:
+          - sandbox
+      endpoints:
+        - port: http
+          path: /minio/v2/metrics/cluster
+          interval: 30s
+
+    # Airflow StatsD Exporter 메트릭
+    - name: airflow-statsd
+      selector:
+        matchLabels:
+          component: statsd
+          release: airflow
+      namespaceSelector:
+        matchNames:
+          - sandbox
+      endpoints:
+        - port: statsd-scrape
+          interval: 30s
+
+  # ----- 추가 PodMonitor -----
+  additionalPodMonitors:
+    # CloudNativePG (PostgreSQL) - Service에 metrics 포트 없으므로 PodMonitor 사용
+    - name: cloudnative-pg
+      selector:
+        matchLabels:
+          cnpg.io/cluster: postgres
+      namespaceSelector:
+        matchNames:
+          - sandbox
+      podMetricsEndpoints:
+        - port: metrics
+          interval: 30s
+
+# ----- Prometheus Operator -----
+prometheusOperator:
+  serviceMonitor:
+    tlsConfig:
+      insecureSkipVerify: true
+
+# ----- k3s 미지원 컴포넌트 비활성화 -----
+# k3s는 컨트롤 플레인을 내장하여 표준 메트릭 엔드포인트 미노출
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# ----- Alertmanager -----
+alertmanager:
+  enabled: false  # 추후 필요시 활성화
+
+# ----- Node Exporter (호스트 메트릭: CPU, Memory, Disk, Network) -----
+nodeExporter:
+  enabled: true
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ----- kube-state-metrics (K8s 오브젝트 메트릭) -----
+kubeStateMetrics:
+  enabled: true
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+

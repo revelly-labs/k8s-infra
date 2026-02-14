@@ -13,7 +13,7 @@ resources:
 persistence:
   enabled: true
   storageClass: local-path
-  size: 10Gi
+  size: 500Gi
 
 service:
   type: ClusterIP
